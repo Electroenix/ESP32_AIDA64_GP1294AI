@@ -116,6 +116,8 @@ void parseAida64HTML(char *htmlData, std::vector<AIDA64_DATA> &dataList)
      * 其中span标签的内容即是在AIDA64中设置的LCD项目，需要将id和内容提取出来，保存在adia64DataList中
      * 之后会发送请求获取刷新数据，通过对比id，修改adia64DataList中对应的值
      */
+    
+    aida64DataList.clear();
 
     temp1 = strstr(htmlData, "<body");
     temp2 = strstr(htmlData, "</body>");
