@@ -10,8 +10,17 @@ void setup()
     Serial.begin(115200);
     Serial.print("[SYSTEM] Initial start...\r\n");
 
+    //Display
+    display.begin();
+    Serial.printf("[VFD DISPLAY] Init finish\r\n");
+    display.clear();
+    display.addString("Welcome!\r\n");
+    display.addString("\r\nInit...\r\n");
+
     //wifi
     WiFi.begin(WIFI_SSID, WIFI_PASS);
+    display.addString("\r\nWIFI begin\r\n");
+    display.addString("\r\nConnect to\n" WIFI_SSID "\r\n");
 
     while (WiFi.status() != WL_CONNECTED)
     {
@@ -19,14 +28,10 @@ void setup()
         delay(1000);
     }
     Serial.printf("[WIFI] Connect Succeed!\r\n");
-
-    //Display
-    u8g2.begin();
-    u8g2.setFont(u8g2_font_5x7_tf);
-    u8g2.setFontPosTop();
-    Serial.printf("[VFD DISPLAY] Init finish\r\n");
+    display.addString("\r\nSucceed!\r\n");
     
     Serial.print("[SYSTEM] READY!\r\n");
+    display.addString("\r\nREADY!\r\n");
 
     // thread
     xTaskCreate(taskHttpClient, "taskHttpClient", 102400, NULL, 2, NULL);

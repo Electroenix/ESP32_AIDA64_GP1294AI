@@ -1,11 +1,10 @@
 #include "http_client.h"
 #include <lwip/sockets.h>
 #include "config.h"
+#include "display.h"
 
 char httpDataBuffer[4096];
 std::vector<AIDA64_DATA> aida64DataList;
-
-extern void displayAida64Data(std::vector<AIDA64_DATA> &dataList);
 
 void taskHttpClient(void *param)
 {
@@ -70,8 +69,7 @@ void taskHttpClient(void *param)
                 //parse data
                 parseAida64Data(httpDataBuffer, aida64DataList);
                 //display data
-                displayAida64Data(aida64DataList);
-                //adia64DataList.clear();
+                display.displayAida64Data(aida64DataList);
             }
         }
         else
