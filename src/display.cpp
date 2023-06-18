@@ -50,7 +50,7 @@ void SCREEN_DISPLAY::addString(const char *str, bool multiLine/* = true*/)
 
     do
     {
-        //启用多行时超出屏幕宽度换行
+        //启用多行显示时超出屏幕宽度换行
         if(multiLine && (bufferCol - 1) * font_w > 48)
         {
             bufferCol = 0;
@@ -61,7 +61,7 @@ void SCREEN_DISPLAY::addString(const char *str, bool multiLine/* = true*/)
         c[0] = *str++;
         if(c[0] == '\n')//换行
         {
-            if(!nextLine)//if 超出屏幕换行之后紧跟"\n"则不再换行
+            if(!nextLine)//如果超出屏幕换行之后紧跟"\n"则不再换行
             {
                 bufferCol = 0;
                 bufferRaw++;
