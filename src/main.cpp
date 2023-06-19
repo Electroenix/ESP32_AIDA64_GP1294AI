@@ -14,13 +14,13 @@ void setup()
     display.begin();
     Serial.printf("[VFD DISPLAY] Init finish\r\n");
     display.clear();
-    display.addString("Welcome!\r\n");
-    display.addString("\r\nInit...\r\n");
+    display.print("Welcome!\r\n");
+    display.print("\r\nInit...\r\n");
 
     //wifi
     WiFi.begin(WIFI_SSID, WIFI_PASS);
-    display.addString("\r\nWIFI begin\r\n");
-    display.addString("\r\nConnect to\n" WIFI_SSID "\r\n");
+    display.print("\r\nWIFI begin\r\n");
+    display.print("\r\nConnect to\n" WIFI_SSID "\r\n");
 
     while (WiFi.status() != WL_CONNECTED)
     {
@@ -28,10 +28,10 @@ void setup()
         delay(1000);
     }
     Serial.printf("[WIFI] Connect Succeed!\r\n");
-    display.addString("\r\nSucceed!\r\n");
+    display.print("\r\nSucceed!\r\n");
     
     Serial.print("[SYSTEM] READY!\r\n");
-    display.addString("\r\nREADY!\r\n");
+    display.print("\r\nREADY!\r\n");
 
     // thread
     xTaskCreate(taskHttpClient, "taskHttpClient", 102400, NULL, 2, NULL);

@@ -15,10 +15,10 @@ public:
     void begin();
     void displayAida64Data(std::vector<AIDA64_DATA> &dataList);
     void clear();
-    void addString(const char *str, bool multiLine = true);
+    void print(const char *str, bool multiLine = true);
 
 private:
-    int bufferRaw;
+    int bufferRow;
     int bufferCol;
 };
 

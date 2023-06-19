@@ -26,15 +26,15 @@ void taskHttpClient(void *param)
         httpCode = httpClient.GET();
 
         display.clear();
-        display.addString("HTTP begin\r\n");
-        display.addString("\r\nGET / ...\r\n");
+        display.print("HTTP begin\r\n");
+        display.print("\r\nGET / ...\r\n");
 
         // httpCode will be negative on error
         if (httpCode == HTTP_CODE_OK)
         {
             // HTTP header has been send and Server response header has been handled
             Serial.printf("[HTTP] GET HTML succeed: %d\n", httpCode);
-            display.addString("\r\nSucceed!\r\n");
+            display.print("\r\nSucceed!\r\n");
             String getHTML = httpClient.getString().c_str();
 
             //Parse HTML
@@ -43,7 +43,7 @@ void taskHttpClient(void *param)
         else
         {
             Serial.printf("[HTTP] GET HTML failed, error: %s\n", httpClient.errorToString(httpCode).c_str());
-            display.addString("\r\nFailed!\r\n");
+            display.print("\r\nFailed!\r\n");
             goto END;
         }
 
@@ -54,11 +54,11 @@ void taskHttpClient(void *param)
 
         httpClient.setURL("/sse");
         httpCode = httpClient.GET();
-        display.addString("\r\nGET /sse ...\r\n");
+        display.print("\r\nGET /sse ...\r\n");
 
         if(httpCode == HTTP_CODE_OK)
         {
-            display.addString("\r\nSucceed!\r\n");
+            display.print("\r\nSucceed!\r\n");
 
             while (1)
             {
@@ -70,7 +70,7 @@ void taskHttpClient(void *param)
                 {
                     Serial.printf("[HTTP] Connect error!\n");
                     display.clear();
-                    display.addString("\r\n[HTTP] Disconnect!\r\n");
+                    display.print("\r\n[HTTP] Disconnect!\r\n");
                     goto END;
                 }
 
@@ -86,7 +86,7 @@ void taskHttpClient(void *param)
         else
         {
             Serial.printf("[HTTP] GET /sse failed, error: %s\n", httpClient.errorToString(httpCode).c_str());
-            display.addString("\r\nFailed!\r\n");
+            display.print("\r\nFailed!\r\n");
             goto END;
         }
 
