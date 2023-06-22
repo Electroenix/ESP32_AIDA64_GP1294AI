@@ -128,7 +128,7 @@ void parseAida64HTML(char *htmlData, std::vector<AIDA64_DATA> &dataList)
 
     memset(httpDataBuffer, 0, sizeof(httpDataBuffer));
     snprintf(httpDataBuffer, temp2 - temp1, temp1);
-    Serial.printf("%s\r\n", httpDataBuffer);
+    //Serial.printf("%s\r\n", httpDataBuffer);
 
     temp1 = httpDataBuffer;
     do
@@ -150,7 +150,7 @@ void parseAida64HTML(char *htmlData, std::vector<AIDA64_DATA> &dataList)
         memset(data.id, 0, sizeof(data.id));
         strncpy(data.id, temp1, temp2 - temp1);
 
-        Serial.printf("id: %s\r\n", data.id);
+        //Serial.printf("id: %s\r\n", data.id);
 
         //get val
         temp1 = strstr(temp1, ">");
@@ -164,7 +164,7 @@ void parseAida64HTML(char *htmlData, std::vector<AIDA64_DATA> &dataList)
         memset(data.val, 0, sizeof(data.val));
         strncpy(data.val, temp1, temp2 - temp1);
 
-        Serial.printf("val: %s\r\n", data.val);
+        //Serial.printf("val: %s\r\n", data.val);
 
         aida64DataList.push_back(data);
 
