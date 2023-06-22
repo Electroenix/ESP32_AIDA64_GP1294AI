@@ -14,7 +14,6 @@ SCREEN_DISPLAY::SCREEN_DISPLAY()
     bufferCol = 0;
 }
 
-
 void SCREEN_DISPLAY::begin()
 {
     u8g2.begin();
@@ -50,7 +49,7 @@ void SCREEN_DISPLAY::print(const char *str, bool multiLine/* = true*/)
     do
     {
         //启用多行显示时超出屏幕宽度换行
-        if(multiLine && (bufferCol - 1) * COL_WIDTH > DISPLAY_WIDTH)
+        if(multiLine && bufferCol * COL_WIDTH >= DISPLAY_WIDTH)
         {
             bufferCol = 0;
             bufferRow++;

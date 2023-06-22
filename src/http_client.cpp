@@ -18,6 +18,10 @@ void taskHttpClient(void *param)
 
     while(1)
     {
+        while(WiFi.status() != WL_CONNECTED)
+        {
+            delay(1000);
+        }
         /*
          * Request HTML
          * 解析HTML获得需要显示的项目列表
