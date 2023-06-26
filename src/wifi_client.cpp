@@ -18,6 +18,7 @@ void taskWifiClient(void *param)
     unsigned long reconnectTick = 0;
     unsigned long connectBeginTick = 0;
     unsigned long connectingTick = 0;
+    unsigned long ledTick = 0;
     int wifiStatus = WIFI_NOT_INIT;
 
     Serial.print("[TASK] taskWifiClient run!\r\n");
@@ -90,6 +91,15 @@ void taskWifiClient(void *param)
 
                 u8g2.setPowerSave(0);
                 display.print("\r\nSucceed!\r\n");
+            }
+
+            if(getElapsedTick(ledTick) > 3000)
+            {
+                pinMode(2, OUTPUT);
+                digitalWrite(2, HIGH);
+                delay(5);
+                digitalWrite(2, LOW);
+                ledTick = millis();
             }
         }
 
