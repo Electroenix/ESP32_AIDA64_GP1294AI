@@ -23,12 +23,15 @@ void SCREEN_DISPLAY::begin()
 
 void SCREEN_DISPLAY::displayAida64Data(std::vector<AIDA64_DATA> &dataList)
 {
+    int u8g2_ret = 0;
+
     u8g2.clearBuffer();
 
     for(int i = 0; i < dataList.size(); i++)
     {
-        Serial.printf("%s\r\n", dataList[i].val);
-        u8g2.drawUTF8(0, i * (ROW_HEIGHT * 1.25), dataList[i].val);
+        //UARTPrintf("%s\r\n", dataList[i].val);
+        u8g2_ret = u8g2.drawUTF8(0, i * (ROW_HEIGHT * 1.25), dataList[i].val);
+        //UARTPrintf("u8g2_ret: %d\r\n", u8g2_ret);
     }
     
     u8g2.sendBuffer();
@@ -44,26 +47,21 @@ void SCREEN_DISPLAY::clear()
 void SCREEN_DISPLAY::print(const char *str, bool multiLine/* = true*/)
 {
     char c[2] = {0};
-    bool nextLine = false;
 
     do
     {
         //启用多行显示时超出屏幕宽度换行
-        if(multiLine && bufferCol * COL_WIDTH >= DISPLAY_WIDTH)
+        if(multiLine && bufferCol * COL_WIDTH >= DISPLAY_WIDTH && c[0] != '\n')
         {
             bufferCol = 0;
             bufferRow++;
-            nextLine = true;
         }
 
         c[0] = *str++;
         if(c[0] == '\n')//换行
         {
-            if(!nextLine)//如果超出屏幕换行之后紧跟"\n"则不再换行
-            {
-                bufferCol = 0;
-                bufferRow++;
-            }
+            bufferCol = 0;
+            bufferRow++;
         }
         else if(c[0] == '\r')//回到行首
         {
@@ -75,7 +73,6 @@ void SCREEN_DISPLAY::print(const char *str, bool multiLine/* = true*/)
             bufferCol++;
         }
 
-        nextLine = false;
     } while (*str != '\0');
 
     u8g2.sendBuffer();

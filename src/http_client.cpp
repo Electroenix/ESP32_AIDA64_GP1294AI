@@ -2,6 +2,7 @@
 #include <lwip/sockets.h>
 #include "config.h"
 #include "display.h"
+#include <regex>
 
 char httpDataBuffer[4096];
 std::vector<AIDA64_DATA> aida64DataList;
@@ -14,7 +15,7 @@ void taskHttpClient(void *param)
     int fd = 0;//tcp socket fd
     int recv_len = 0;
 
-    Serial.print("[TASK] taskHttpClient run!\r\n");
+    httpPrintLog("taskHttpClient run!\r\n");
 
     while(1)
     {
@@ -37,7 +38,7 @@ void taskHttpClient(void *param)
         if (httpCode == HTTP_CODE_OK)
         {
             // HTTP header has been send and Server response header has been handled
-            Serial.printf("[HTTP] GET HTML succeed: %d\n", httpCode);
+            httpPrintLog("GET HTML succeed: %d\n", httpCode);
             display.print("\r\nSucceed!\r\n");
             String getHTML = httpClient.getString().c_str();
 
@@ -46,7 +47,7 @@ void taskHttpClient(void *param)
         }
         else
         {
-            Serial.printf("[HTTP] GET HTML failed, error: %s\n", httpClient.errorToString(httpCode).c_str());
+            httpPrintLog("GET HTML failed, error: %s\n", httpClient.errorToString(httpCode).c_str());
             display.print("\r\nFailed!\r\n");
             goto END;
         }
@@ -72,14 +73,14 @@ void taskHttpClient(void *param)
 
                 if(recv_len <= 0)
                 {
-                    Serial.printf("[HTTP] Connect error!\n");
+                    httpPrintLog("Connect error!\n");
                     display.clear();
                     display.print("\r\n[HTTP] Disconnect!\r\n");
                     goto END;
                 }
 
                 httpDataBuffer[recv_len] = '\0';
-                //Serial.printf("%s\r\n", payload);
+                //httpPrintLog("%s\r\n", payload);
 
                 //parse data
                 parseAida64Data(httpDataBuffer, aida64DataList);
@@ -89,7 +90,7 @@ void taskHttpClient(void *param)
         }
         else
         {
-            Serial.printf("[HTTP] GET /sse failed, error: %s\n", httpClient.errorToString(httpCode).c_str());
+            httpPrintLog("GET /sse failed, error: %s\n", httpClient.errorToString(httpCode).c_str());
             display.print("\r\nFailed!\r\n");
             goto END;
         }
@@ -101,10 +102,6 @@ void taskHttpClient(void *param)
 
 void parseAida64HTML(char *htmlData, std::vector<AIDA64_DATA> &dataList)
 {
-    char *temp1 = NULL;
-    char *temp2 = NULL;
-    AIDA64_DATA data = {0};
-
     /*
      * 接收到的HTML有如下结构
      * ...
@@ -121,91 +118,63 @@ void parseAida64HTML(char *htmlData, std::vector<AIDA64_DATA> &dataList)
      * 之后会发送请求获取刷新数据，通过对比id，修改adia64DataList中对应的值
      */
     
+    AIDA64_DATA data = {0};
+    std::string input(htmlData);
+
     aida64DataList.clear();
+    httpPrintLog("htmlData:\r\n%s\r\n", htmlData);
 
-    temp1 = strstr(htmlData, "<body");
-    temp2 = strstr(htmlData, "</body>");
+    // 定义正则表达式
+    std::regex pattern("<span id=\"(.*?)\".*?>(.*?)<\\/span>");
 
-    memset(httpDataBuffer, 0, sizeof(httpDataBuffer));
-    snprintf(httpDataBuffer, temp2 - temp1, temp1);
-    //Serial.printf("%s\r\n", httpDataBuffer);
+    // 搜索匹配项
+    std::sregex_iterator it(input.begin(), input.end(), pattern);
+    std::sregex_iterator end;
+    
+    while (it != end) {
+        // 提取匹配的子串
+        std::smatch match = *it;
+        httpPrintLog("match: %s, %s\r\n", match[1].str().c_str(), match[2].str().c_str());
 
-    temp1 = httpDataBuffer;
-    do
-    {
-        temp1 = strstr(temp1, "<span");
-        if(temp1 == NULL)
-            return;
-        
-        //get id
-        temp1 = strstr(temp1, "id=\"");
-        if(temp1 == NULL)
-            return;
-        temp1 += strlen("id=\"");
-
-        temp2 = strstr(temp1, "\" ");
-        if(temp2 == NULL)
-            return;
-        
-        memset(data.id, 0, sizeof(data.id));
-        strncpy(data.id, temp1, temp2 - temp1);
-
-        //Serial.printf("id: %s\r\n", data.id);
-
-        //get val
-        temp1 = strstr(temp1, ">");
-        if(temp1 == NULL)
-            return;
-        temp1++;
-
-        temp2 = strstr(temp1, "</span>");
-        if(temp2 == NULL)
-            return;
-        memset(data.val, 0, sizeof(data.val));
-        strncpy(data.val, temp1, temp2 - temp1);
-
-        //Serial.printf("val: %s\r\n", data.val);
-
+        // 加入aida64DataList
+        strcpy(data.id, match[1].str().c_str());
+        strcpy(data.val, match[2].str().c_str());
         aida64DataList.push_back(data);
 
-        temp1 = temp2 + strlen("</span>");
-    } while (1);
+        ++it;
+    }
+
+    return;
 }
 
 void parseAida64Data(char *src, std::vector<AIDA64_DATA> &dataList)
-{        
-    char *temp1 = src;
-    char *temp2 = NULL;
-    AIDA64_DATA data = {0};
-
+{
     /* 
      * ADIA64会回复以下格式的响应体:
      * data: Page0|{|}Simple1|数据1{|}Simple2|数据2{|}...
      * 需要将数据从字符串中提取出来
      */
+    
+    AIDA64_DATA data = {0};
+    std::string input(src);
 
-    do
-    {
-        temp1 = strstr(temp1, "{|}");
-        if(temp1 == NULL)
-            return;
-        temp1 += strlen("{|}");
+    httpPrintLog("src:\r\n%s\r\n", src);
 
-        temp2 = strstr(temp1, "|");
-        if(temp2 == NULL)
-            return;
-        
-        
-        memset(data.id, 0, sizeof(data.id));
-        strncpy(data.id, temp1, temp2 - temp1);
+    // 定义正则表达式
+    std::regex pattern("\\{\\|\\}(.*?)\\|(.*?)(?=\\{\\|\\})");
 
-        temp1 = temp2 + 1;
+    // 搜索匹配项
+    std::sregex_iterator it(input.begin(), input.end(), pattern);
+    std::sregex_iterator end;
+    
+    while (it != end) {
+        // 提取匹配的子串
+        std::smatch match = *it;
+        httpPrintLog("match: %s, %s\r\n", match[1].str().c_str(), match[2].str().c_str());
 
-        temp2 = strstr(temp1, "{|}");
-        if(temp2 == NULL)
-            return;
-        memset(data.val, 0, sizeof(data.val));
-        strncpy(data.val, temp1, temp2 - temp1);
+        // 更新aida64DataList数据
+        strcpy(data.id, match[1].str().c_str());
+        strcpy(data.val, match[2].str().c_str());
 
         for(int i = 0; i < dataList.size(); i++)
         {
@@ -217,8 +186,10 @@ void parseAida64Data(char *src, std::vector<AIDA64_DATA> &dataList)
             }
         }
 
-        temp1 = temp2;
-    } while (1);
+        ++it;
+    }
+
+    return;
 }
 
 void strremove(char* src, char remove)
