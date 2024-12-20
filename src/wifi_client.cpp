@@ -35,7 +35,7 @@ void taskWifiClient(void *param)
                 wifiPrintLog("Connect to " WIFI_SSID "\r\n");
                 display.clear();
                 display.print("\r\nWIFI begin\r\n");
-                display.print("\r\nConnect to\n" WIFI_SSID "\r\n");
+                display.print("\r\nConnect to " WIFI_SSID "\r\n");
                 display.print("\r\nConnecting");
                 connectBeginTick = millis();
             }
@@ -80,7 +80,7 @@ void taskWifiClient(void *param)
 
                 if(getElapsedTick(connectBeginTick) >= 60000)
                 {
-                    u8g2.setPowerSave(1);//60s未连接关闭屏幕
+                    display.setPowerSave(1);//60s未连接关闭屏幕
                     wifiPrintLog("Screen enter PowerSave Mode\r\n");
                 }
             }
@@ -92,7 +92,7 @@ void taskWifiClient(void *param)
                 wifiStatus = WIFI_CONNECTED;
                 wifiPrintLog("Wifi Connect succeed!\r\n");
 
-                u8g2.setPowerSave(0);
+                display.setPowerSave(0);
                 display.print("\r\nSucceed!\r\n");
             }
 #if 0

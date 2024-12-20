@@ -4,6 +4,9 @@
 #include "config.h"
 #include "wifi_client.h"
 
+/* default config */
+int screen_dir = SCREEN_DIR_HORIZONTAL;
+
 void setup()
 {
     // put your setup code here, to run once:
@@ -12,7 +15,7 @@ void setup()
     UARTPrintf("[SYSTEM] Initial start...\r\n");
 
     //Display
-    display.begin();
+    display.begin(screen_dir);
     UARTPrintf("[VFD DISPLAY] Init finish\r\n");
     display.clear();
     display.print("Welcome!\r\n");
