@@ -11,7 +11,7 @@
 ## 使用
 1. 打开AIDA64软件，打开设置->LCD->RemoteSensor, 输入一个端口号，勾选启用RemoteSensor LCD支持，然后点击应用或OK
 
-2. 选择LCD项目，在里面可以添加希望显示的项目，修改后选择应用或OK
+2. 选择LCD项目，将aida64config/example.rslcd导入，点击OK
 
 3. 可以在浏览器里输入本地ip和端口号看看是否能显示面板，最好在局域网内用其他设备访问验证，确保没有被防火墙屏蔽
 
