@@ -4,7 +4,7 @@
 #include <HTTPClient.h>
 #include "public.h"
 
-#define httpPrintLog(format, arg...) UARTPrintf("[HTTP] " format, ##arg)
+#define httpPrintLog(format, arg...) UARTPrintf("\r\n[HTTP] " format, ##arg)
 
 extern std::vector<AIDA64_DATA> aida64DataList;
 

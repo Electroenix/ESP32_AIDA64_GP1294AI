@@ -30,16 +30,15 @@ void taskHttpClient(void *param)
         httpClient.begin(HTTP_HOST, HTTP_PORT);
         httpCode = httpClient.GET();
 
-        display.clear();
         display.print("HTTP begin\r\n");
-        display.print("\r\nGET / ...\r\n");
+        display.print("GET / ...\r\n");
 
         // httpCode will be negative on error
         if (httpCode == HTTP_CODE_OK)
         {
             // HTTP header has been send and Server response header has been handled
             httpPrintLog("GET HTML succeed: %d\n", httpCode);
-            display.print("\r\nSucceed!\r\n");
+            display.print("Succeed!\r\n");
             String getHTML = httpClient.getString().c_str();
 
             //Parse HTML
@@ -48,7 +47,7 @@ void taskHttpClient(void *param)
         else
         {
             httpPrintLog("GET HTML failed, error: %s\n", httpClient.errorToString(httpCode).c_str());
-            display.print("\r\nFailed!\r\n");
+            display.print("Failed!\r\n");
             goto END;
         }
 
@@ -59,11 +58,11 @@ void taskHttpClient(void *param)
 
         httpClient.setURL("/sse");
         httpCode = httpClient.GET();
-        display.print("\r\nGET /sse ...\r\n");
+        display.print("GET /sse ...\r\n");
 
         if(httpCode == HTTP_CODE_OK)
         {
-            display.print("\r\nSucceed!\r\n");
+            display.print("Succeed!\r\n");
 
             while (1)
             {
@@ -74,8 +73,7 @@ void taskHttpClient(void *param)
                 if(recv_len <= 0)
                 {
                     httpPrintLog("Connect error!\n");
-                    display.clear();
-                    display.print("\r\n[HTTP] Disconnect!\r\n");
+                    display.print("[HTTP] Disconnect!\r\n");
                     goto END;
                 }
 
@@ -91,7 +89,7 @@ void taskHttpClient(void *param)
         else
         {
             httpPrintLog("GET /sse failed, error: %s\n", httpClient.errorToString(httpCode).c_str());
-            display.print("\r\nFailed!\r\n");
+            display.print("Failed!\r\n");
             goto END;
         }
 

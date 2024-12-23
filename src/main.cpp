@@ -6,6 +6,7 @@
 
 /* default config */
 int screen_dir = SCREEN_DIR_HORIZONTAL;
+int loop_times = 0;
 
 void setup()
 {
@@ -28,5 +29,11 @@ void setup()
 void loop()
 {
     // put your main code here, to run repeatedly:
+#if 0
+    char bufffer[32] = { 0 };
+    sprintf(bufffer, "hello world! %d\r\n", loop_times++);
+    display.print(bufffer);
+    delay(1000);
+#endif
 }
 

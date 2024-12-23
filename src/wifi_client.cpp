@@ -33,10 +33,9 @@ void taskWifiClient(void *param)
 
                 WiFi.begin(WIFI_SSID, WIFI_PASS);
                 wifiPrintLog("Connect to " WIFI_SSID "\r\n");
-                display.clear();
-                display.print("\r\nWIFI begin\r\n");
-                display.print("\r\nConnect to " WIFI_SSID "\r\n");
-                display.print("\r\nConnecting");
+                display.print("WIFI begin\r\n");
+                display.print("Connect to " WIFI_SSID "\r\n");
+                display.print("Connecting");
                 connectBeginTick = millis();
             }
 
@@ -47,9 +46,8 @@ void taskWifiClient(void *param)
                 wifiPrintLog("Disconnect!\r\n");
                 wifiPrintLog("Reconnect to " WIFI_SSID "\r\n");
 
-                display.clear();
                 display.print("WIFI Disconnect!\r\n");
-                display.print("\r\nReconnecting");
+                display.print("Reconnecting");
 
                 WiFi.reconnect();
                 connectBeginTick = millis();
@@ -70,9 +68,8 @@ void taskWifiClient(void *param)
                     wifiPrintLog("Connect timeout!\r\n");
                     wifiPrintLog("Reconnect\r\n");
 
-                    display.clear();
                     display.print("WIFI Connect failed!\r\n");
-                    display.print("\r\nReconnecting ");
+                    display.print("Reconnecting ");
 
                     WiFi.reconnect();
                     reconnectTick = millis();
@@ -93,7 +90,7 @@ void taskWifiClient(void *param)
                 wifiPrintLog("Wifi Connect succeed!\r\n");
 
                 display.setPowerSave(0);
-                display.print("\r\nSucceed!\r\n");
+                display.print("Succeed!\r\n");
             }
 #if 0
             if(getElapsedTick(ledTick) > 3000)
