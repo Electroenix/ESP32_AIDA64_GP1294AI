@@ -13,7 +13,7 @@ class WiFiConfig {
 
     setupEventListeners() {
         // WiFi表单提交
-        document.getElementById('wifi-form').addEventListener('submit', (e) => {
+        document.getElementById('config-form').addEventListener('submit', (e) => {
             e.preventDefault();
             this.saveWiFiConfig();
         });
@@ -66,10 +66,12 @@ class WiFiConfig {
     }
 
     async saveWiFiConfig() {
-        const formData = new FormData(document.getElementById('wifi-form'));
+        const formData = new FormData(document.getElementById('config-form'));
         const config = {
             ssid: formData.get('ssid'),
-            password: formData.get('password')
+            password: formData.get('password'),
+            host_ip: formData.get('host_ip'),
+            host_port: formData.get('host_port')
         };
 
         if (!config.ssid) {

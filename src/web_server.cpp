@@ -4,6 +4,7 @@
 #include <ArduinoJson.h>
 #include "trace.h"
 #include "wifi_client.h"
+#include "config.h"
 
 WebServer server(80);
 String wifiScanRspCache;
@@ -77,25 +78,7 @@ void handleScanNetworks() {
   ESP_LOGI(WEB_SERVER_TAG, "response > %s", response.c_str());
 }
 
-// API: 读取已扫描的WiFi网络
-void handleReadScanNetworks() {
-  StaticJsonDocument<2048> doc;
-  JsonArray networks = doc.to<JsonArray>();
-
-  for (int i = 0; i < wifi_context.last_wifi_scan_list.size(); i++) {
-    JsonObject network = networks.createNestedObject();
-    network["ssid"] = wifi_context.last_wifi_scan_list[i].ssid;
-    network["rssi"] = wifi_context.last_wifi_scan_list[i].rssi;
-    network["encryption"] = (wifi_context.last_wifi_scan_list[i].encryption_type == WIFI_AUTH_OPEN) ? "open" : "encrypted";
-  }
-
-  String response;
-  serializeJson(doc, response);
-  server.send(200, "application/json", response);
-  ESP_LOGI(WEB_SERVER_TAG, "response > %s", response.c_str());
-}
-
-// API: 保存WiFi配置
+// API: 保存配置
 void handleSaveConfig() {
   if (server.method() != HTTP_POST) {
     server.send(405, "application/json", "{\"success\":false,\"message\":\"Method not allowed\"}");
@@ -103,6 +86,8 @@ void handleSaveConfig() {
   }
   
   String body = server.arg("plain");
+  ESP_LOGI(WEB_SERVER_TAG, "body: %s", body.c_str());
+
   StaticJsonDocument<256> doc;
   DeserializationError error = deserializeJson(doc, body);
   
@@ -111,16 +96,19 @@ void handleSaveConfig() {
     return;
   }
 
-  wifi_auth_config_t newConfig;
-  newConfig.ssid = doc["ssid"] | "";
-  newConfig.password = doc["password"] | "";
-  
-  if (newConfig.ssid.isEmpty()) {
+  config_t newConfig;
+  memcpy(&newConfig, &g_config, sizeof(newConfig));
+  newConfig.sta_auth_cfg.ssid = doc["ssid"] | "";
+  newConfig.sta_auth_cfg.password = doc["password"] | "";
+  newConfig.host_ip = doc["host_ip"] | "";
+  newConfig.host_port = doc["host_port"];
+
+  if (newConfig.sta_auth_cfg.ssid.isEmpty()) {
     server.send(400, "application/json", "{\"success\":false,\"message\":\"SSID is required\"}");
     return;
   }
-  
-  if (saveWifiConfig(newConfig)) {
+
+  if (saveConfig(newConfig)) {
     server.send(200, "application/json", "{\"success\":true,\"message\":\"Config saved\"}");
     
     // 重启应用配置
@@ -140,7 +128,7 @@ void handleRestart() {
 
 // API: 恢复出厂设置
 void handleReset() {
-  if (LittleFS.remove(WIFI_CONFIG_FILE)) {
+  if (LittleFS.remove(CONFIG_FILE_PATH)) {
     server.send(200, "application/json", "{\"success\":true,\"message\":\"Config reset\"}");
     delay(1000);
     ESP.restart();

@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32 WiFi配置</title>
+    <title>VFD硬件监控屏配置</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>ESP32 WiFi配置</h1>
+            <h1>VFD硬件监控屏配置</h1>
             <div class="status" id="status">正在连接...</div>
         </div>
 
@@ -36,8 +36,8 @@
         </div>
 
         <div class="card">
-            <h2>WiFi配置</h2>
-            <form id="wifi-form">
+            <h2>配置</h2>
+            <form id="config-form">
                 <div class="form-group">
                     <label for="ssid">WiFi名称 (SSID):</label>
                     <input type="text" id="ssid" name="ssid" required 
@@ -48,6 +48,18 @@
                     <label for="password">WiFi密码:</label>
                     <input type="password" id="password" name="password" 
                            placeholder="输入WiFi密码">
+                </div>
+
+                <div class="form-group">
+                    <label for="host_ip">主机IP:</label>
+                    <input type="text" id="host_ip" name="host_ip" required 
+                           placeholder="输入电脑ip地址">
+                </div>
+
+                <div class="form-group">
+                    <label for="host_port">主机端口:</label>
+                    <input type="number" id="host_port" name="host_port" required 
+                           placeholder="输入AIDA64软件中设置的端口">
                 </div>
 
                 <div class="form-actions">

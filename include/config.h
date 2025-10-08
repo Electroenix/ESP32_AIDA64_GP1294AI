@@ -18,8 +18,29 @@
 #define AP_SSID     "Esp32-AP-" + String(ESP.getEfuseMac() & 0xFFFFFF, HEX)
 #define AP_PASSWORD "12345678"
 
-//HTTP
-#define HTTP_HOST "192.168.100.146"
-#define HTTP_PORT 8080
+//主机AIDA64软件开启的tcp地址和端口
+#define HOST_IP "HOST_IP"
+#define HOST_PORT 8080
 
+#define CONFIG_FILE_PATH     "/config.json"
+
+typedef struct
+{
+    String ssid;
+    String password;
+}wifi_auth_config_t;
+
+typedef struct
+{
+    wifi_auth_config_t sta_auth_cfg;
+    wifi_auth_config_t ap_auth_cfg;
+    String host_ip;
+    uint16_t host_port;
+}config_t;
+
+extern config_t g_config;
+
+bool saveConfig(const config_t &config);
+bool loadConfig(config_t &config);
+void initConfig(void);
 #endif

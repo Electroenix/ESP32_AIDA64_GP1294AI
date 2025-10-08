@@ -141,7 +141,7 @@ void taskHttpClient(void *param)
          * Request HTML
          * 解析HTML获得需要显示的项目列表
          */
-        httpClient.begin(HTTP_HOST, HTTP_PORT);
+        httpClient.begin(g_config.host_ip, g_config.host_port);
         httpClient.setReuse(false);
         httpCode = httpClient.GET();
 

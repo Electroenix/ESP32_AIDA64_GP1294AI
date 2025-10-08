@@ -278,7 +278,7 @@ void SCREEN_DISPLAY::print(const char *str)
     do
     {
         //超出屏幕宽度换行
-        if(cursor.y * COL_WIDTH >= DISPLAY_WIDTH && c[0] != '\n')
+        if((cursor.y + 1) * COL_WIDTH >= DISPLAY_WIDTH && c[0] != '\n')
         {
             cursor.y = 0;
             cursor.x++;

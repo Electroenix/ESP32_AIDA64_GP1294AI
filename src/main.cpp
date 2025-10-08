@@ -16,6 +16,7 @@ void setup()
     initLogger();
     ESP_LOGI(MAIN_TAG, "Initial start...");
     initFileSystem();
+    initConfig();
     initDisplay();
     initWifiClient();
     initWebServer();
