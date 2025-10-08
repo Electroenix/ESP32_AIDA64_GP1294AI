@@ -27,6 +27,7 @@ int checkAidaItemTitle(const char *str)
 SCREEN_DISPLAY::SCREEN_DISPLAY():u8g2(U8G2_R3, /* cs=*/ CS, /* reset=*/ RST)
 {
     screen_dir = SCREEN_DIR_VERTICAL;
+    is_power_save_mode = false;
     memset(&print_buffer, 0x00, sizeof(print_buffer));
     memset(&cursor, 0x00, sizeof(cursor));
 }
@@ -126,63 +127,60 @@ void SCREEN_DISPLAY::displayAida64Data(std::vector<AIDA64_DATA> &dataList)
 void SCREEN_DISPLAY::clear()
 {
     u8g2.clearBuffer();
-    cursor.x = 0;
-    cursor.y = 0;
+    memset(&print_buffer, 0x00, sizeof(print_buffer));
+    memset(&cursor, 0x00, sizeof(cursor));
 }
 
 void SCREEN_DISPLAY::printBufferAdd(const char *str)
 {
     char *data_p = print_buffer.data;
-    int head = print_buffer.head;
-    int tail = print_buffer.tail;
+    int *head = &print_buffer.head;
+    int *tail = &print_buffer.tail;
     const char *str_p = str;
     int next = 0;
     bool is_empty = 0;
 
     while(*str_p != '\0')
     {
-        if(head == 0 && tail == 0)  //buffer is empty
+        if(*head == 0 && *tail == 0)  //buffer is empty
         {
             next = 0;
             is_empty = true;
         }
         else
         {
-            next = (tail + 1) % PRINT_BUFFER_LEN_MAX;
+            next = (*tail + 1) % PRINT_BUFFER_LEN_MAX;
             is_empty = false;
         }
 
         if(next + strlen(str_p) > PRINT_BUFFER_LEN_MAX)
         {
-            //displayPrintLog("next(%d) + strlen(str_p)(%d) > PRINT_BUFFER_LEN_MAX(%d)", next, strlen(str_p), PRINT_BUFFER_LEN_MAX);
-            memcpy(data_p + next, str_p, PRINT_BUFFER_LEN_MAX - (tail + 1));
+            //ESP_LOGD(DISPLAY_TAG, "next(%d) + strlen(str_p)(%d) > PRINT_BUFFER_LEN_MAX(%d)", next, strlen(str_p), PRINT_BUFFER_LEN_MAX);
+            memcpy(data_p + next, str_p, PRINT_BUFFER_LEN_MAX - (*tail + 1));
             str_p += PRINT_BUFFER_LEN_MAX - next;
-            tail = PRINT_BUFFER_LEN_MAX - 1;
+            *tail = PRINT_BUFFER_LEN_MAX - 1;
             head = 0;
         }
         else
         {
-            //displayPrintLog("next(%d) + strlen(str_p)(%d) <= PRINT_BUFFER_LEN_MAX(%d)", next, strlen(str_p), PRINT_BUFFER_LEN_MAX);
+            //ESP_LOGD(DISPLAY_TAG, "next(%d) + strlen(str_p)(%d) <= PRINT_BUFFER_LEN_MAX(%d)", next, strlen(str_p), PRINT_BUFFER_LEN_MAX);
             memcpy(data_p + next, str_p, strlen(str_p));
 
-            if(head == next && !is_empty)
+            if(*head == next && !is_empty)
             {
-                tail = next - 1 + strlen(str_p);
-                head = (tail + 1) % PRINT_BUFFER_LEN_MAX;
+                *tail = next - 1 + strlen(str_p);
+                *head = (*tail + 1) % PRINT_BUFFER_LEN_MAX;
             }
             else
             {
-                tail = next - 1 + strlen(str_p);
-                displayPrintLog("tail:%d", tail);
+                *tail = next - 1 + strlen(str_p);
+                ESP_LOGD(DISPLAY_TAG, "tail:%d", *tail);
             }
 
             str_p += strlen(str_p);
             break;
         }
     }
-
-    print_buffer.head = head;
-    print_buffer.tail = tail;
 }
 
 void SCREEN_DISPLAY::updateBufferLineIndex()
@@ -203,18 +201,18 @@ void SCREEN_DISPLAY::updateBufferLineIndex()
         {
             line_len = 0;
             new_line = true;
-            displayPrintLog("new_line, line_index_list.size() == 0");
+            ESP_LOGD(DISPLAY_TAG, "new_line, line_index_list.size() == 0");
         }
         else if(*c == '\n') //new line
         {
             line_len = 0;
             new_line = true;
-            displayPrintLog("new_line, c - data_p:%d, c:\\n", c - data_p);
+            ESP_LOGD(DISPLAY_TAG, "new_line, c - data_p:%d, c:\\n", c - data_p);
         }
         else if(*c == '\r') //new line head
         {
             line_len = 0;
-            displayPrintLog("c - data_p:%d, c:\\r", c - data_p);
+            ESP_LOGD(DISPLAY_TAG, "c - data_p:%d, c:\\r", c - data_p);
         }
         else
         {
@@ -223,7 +221,7 @@ void SCREEN_DISPLAY::updateBufferLineIndex()
             {
                 line_len = 0;
                 new_line = true;
-                displayPrintLog("new_line, c - data_p:%d, c:%d", c - data_p, c);
+                ESP_LOGD(DISPLAY_TAG, "new_line, c - data_p:%d, c:%d", c - data_p, c);
             }
         }
 
@@ -254,16 +252,16 @@ void SCREEN_DISPLAY::print(const char *str)
 
     printBufferAdd(str);
     updateBufferLineIndex();
-    displayPrintLog("buffer head:%d, buffer tail:%d", print_buffer.head, print_buffer.tail);
-    displayPrintLog("buffer:");
-    displayPrintLog("%s", print_buffer.data);
-    displayPrintLog("line_index_list:");
+    ESP_LOGD(DISPLAY_TAG, "buffer head:%d, buffer tail:%d", print_buffer.head, print_buffer.tail);
+    ESP_LOGD(DISPLAY_TAG, "buffer:");
+    ESP_LOGD(DISPLAY_TAG, "%s", print_buffer.data);
+    ESP_LOGD(DISPLAY_TAG, "line_index_list:");
     for(int i = 0; i < line_index_list.size(); i++)
     {
-        displayPrintLog("%d, ", line_index_list[i]);
+        ESP_LOGD(DISPLAY_TAG, "%d, ", line_index_list[i]);
     }
 
-    displayPrintLog("line_index_list.size():%d, row_max:%d, DISPLAY_HEIGHT:%d, ROW_HEIGHT:%f", line_index_list.size(), row_max, DISPLAY_HEIGHT, ROW_HEIGHT);
+    ESP_LOGD(DISPLAY_TAG, "line_index_list.size():%d, row_max:%d, DISPLAY_HEIGHT:%d, ROW_HEIGHT:%f", line_index_list.size(), row_max, DISPLAY_HEIGHT, ROW_HEIGHT);
     if(line_index_list.size() > row_max)
     {
         screen_str = print_buffer.data + line_index_list[line_index_list.size() - row_max];
@@ -287,7 +285,7 @@ void SCREEN_DISPLAY::print(const char *str)
         }
 
         c[0] = *screen_str;
-        //displayPrintLog("c:%s", c);
+        //ESP_LOGD(DISPLAY_TAG, "c:%s", c);
         if(c[0] == '\n')//换行
         {
             cursor.y = 0;
@@ -300,19 +298,19 @@ void SCREEN_DISPLAY::print(const char *str)
         else
         {
             u8g2.drawStr(COL_WIDTH * cursor.y, ROW_HEIGHT * cursor.x, c);
-            //displayPrintLog("u8g2.drawStr(%s), (%d, %d)", c, cursor.x, cursor.y);
+            //ESP_LOGD(DISPLAY_TAG, "u8g2.drawStr(%s), (%d, %d)", c, cursor.x, cursor.y);
             cursor.y++;
         }
 
         /* next char */
         screen_str++;
-        //displayPrintLog("screen_str - print_buffer.data + 1:%d", screen_str - print_buffer.data + 1);
+        //ESP_LOGD(DISPLAY_TAG, "screen_str - print_buffer.data + 1:%d", screen_str - print_buffer.data + 1);
         if(screen_str - print_buffer.data + 1 > PRINT_BUFFER_LEN_MAX)
         {
             screen_str = print_buffer.data;
         }
-        //displayPrintLog("screen_str - print_buffer.data:%d", screen_str - print_buffer.data);
-        //displayPrintLog("screen_str:%c", *screen_str);
+        //ESP_LOGD(DISPLAY_TAG, "screen_str - print_buffer.data:%d", screen_str - print_buffer.data);
+        //ESP_LOGD(DISPLAY_TAG, "screen_str:%c", *screen_str);
         
         if(screen_str == print_buffer.data + (print_buffer.tail + 1) % PRINT_BUFFER_LEN_MAX)
         {
@@ -324,3 +322,11 @@ void SCREEN_DISPLAY::print(const char *str)
 }
 
 SCREEN_DISPLAY display;
+
+void initDisplay()
+{
+    display.begin(screen_dir);
+    ESP_LOGI(DISPLAY_TAG, "Init finish");
+    display.clear();
+    display.print("Welcome!\r\n");
+}

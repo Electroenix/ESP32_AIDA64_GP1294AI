@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 WiFi配置</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>ESP32 WiFi配置</h1>
+            <div class="status" id="status">正在连接...</div>
+        </div>
+
+        <div class="card">
+            <h2>当前WiFi状态</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <label>SSID:</label>
+                    <span id="current-ssid">--</span>
+                </div>
+                <div class="info-item">
+                    <label>IP地址:</label>
+                    <span id="current-ip">--</span>
+                </div>
+                <div class="info-item">
+                    <label>信号强度:</label>
+                    <span id="current-rssi">--</span>
+                </div>
+                <div class="info-item">
+                    <label>运行时间:</label>
+                    <span id="uptime">--</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>WiFi配置</h2>
+            <form id="wifi-form">
+                <div class="form-group">
+                    <label for="ssid">WiFi名称 (SSID):</label>
+                    <input type="text" id="ssid" name="ssid" required 
+                           placeholder="输入WiFi名称">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">WiFi密码:</label>
+                    <input type="password" id="password" name="password" 
+                           placeholder="输入WiFi密码">
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">保存配置</button>
+                    <button type="button" class="btn btn-secondary scan-btn" onclick="wifiConfig.scanNetworks()" title="扫描网络可能导致连接断开，需要重新连接">
+                        扫描网络
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card" id="scan-results" style="display: none;">
+            <h2>可用网络</h2>
+            <div id="networks-list" class="networks-list"></div>
+        </div>
+
+        <div class="card">
+            <h2>系统操作</h2>
+            <div class="form-actions">
+                <button type="button" class="btn btn-warning" onclick="wifiConfig.restartDevice()">
+                    重启设备
+                </button>
+                <button type="button" class="btn btn-danger" onclick="wifiConfig.resetConfig()">
+                    恢复出厂设置
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
