@@ -24,7 +24,7 @@ int checkAidaItemTitle(const char *str)
     return -1;
 }
 
-SCREEN_DISPLAY::SCREEN_DISPLAY():u8g2(U8G2_R3, /* cs=*/ CS, /* reset=*/ RST)
+SCREEN_DISPLAY::SCREEN_DISPLAY():u8g2(U8G2_R3, /* cs=*/ CS, /* dc=*/ U8X8_PIN_NONE, /* reset=*/ RST)
 {
     screen_dir = SCREEN_DIR_VERTICAL;
     is_power_save_mode = false;
@@ -37,6 +37,7 @@ void SCREEN_DISPLAY::begin(int dir)
     u8g2.begin();
     u8g2.setFont(u8g2_font_5x7_tf);
     u8g2.setFontPosTop();
+    u8g2.setContrast(70);
     setScreenDir(dir);
 }
 

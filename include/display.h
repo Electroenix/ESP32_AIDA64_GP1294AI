@@ -1,6 +1,6 @@
 #ifndef _DISPLAY_H_
 #define _DISPLAY_H_
-#include "U8g2lib.h"
+#include <U8g2lib.h>
 #include "public.h"
 #include <vector>
 #include "trace.h"
@@ -75,7 +75,7 @@ public:
     }
 
 private:
-    U8G2_GP1294AI_256X48_F_3W_HW_SPI u8g2;
+    U8G2_GP1294AI_256X48_F_4W_HW_SPI u8g2;
     int screen_dir;
     print_buffer_t print_buffer;  /* fifo buffer, 存储打印数据 */
     std::vector<int> line_index_list;  /* 用来存储buffer中每行数据开头第一个字符在buffer中的位置 */
