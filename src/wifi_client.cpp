@@ -83,7 +83,7 @@ void taskWifiClient(void *param)
                 display.print("WIFI begin\r\n");
                 sprintf(displayBuf, "Connect to %s\r\n", g_config.sta_auth_cfg.ssid);
                 display.print(displayBuf);
-                display.print("Connecting");
+                display.print("Connecting ");
                 connectBeginTick = millis();
             }
 
@@ -95,7 +95,7 @@ void taskWifiClient(void *param)
                 ESP_LOGI(WIFI_TAG, "Reconnect to %s", g_config.sta_auth_cfg.ssid);
 
                 display.print("WIFI Disconnect!\r\n");
-                display.print("Reconnecting");
+                display.print("Reconnecting ");
 
                 WiFi.reconnect();
                 connectBeginTick = millis();
@@ -105,9 +105,8 @@ void taskWifiClient(void *param)
             {
                 if (getElapsedTick(connectingTick) >= 1000)
                 {
-                    ESP_LOGI(WIFI_TAG, "Connecting...");
-
-                    display.print(".");
+                    static LoadingString loading_str = LoadingString();
+                    display.print(loading_str.step().c_str());
                     connectingTick = millis();
                 }
 
@@ -115,7 +114,7 @@ void taskWifiClient(void *param)
                 {
                     ESP_LOGW(WIFI_TAG, "Connect timeout!");
                     ESP_LOGI(WIFI_TAG, "Reconnect");
-                    display.print("WIFI Connect failed!\r\n");
+                    display.print("\r\nfailed!\r\n");
                     display.print("Reconnecting ");
 
                     WiFi.reconnect();

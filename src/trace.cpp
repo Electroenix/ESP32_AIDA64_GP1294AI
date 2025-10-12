@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include "trace.h"
 
 const char* MAIN_TAG = "MAIN";
@@ -9,4 +10,10 @@ const char* FILE_SYSTEM_TAG = "FILE_SYSTEM";
 
 void initLogger() {
     Serial.begin(115200);
+
+    /* gloable log config */
+    esp_log_level_set("*", ESP_LOG_INFO);
+
+    /* module log config */
+    esp_log_level_set(DISPLAY_TAG, ESP_LOG_ERROR);
 }

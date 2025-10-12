@@ -5,17 +5,18 @@
 #define COL_WIDTH u8g2.getMaxCharWidth()
 #define DISPLAY_HEIGHT u8g2.getDisplayHeight()
 #define DISPLAY_WIDTH u8g2.getDisplayWidth()
+#define PRINT_BUFFER_LEN_MAX 1024
 
-const char *aida_item_title[] = { "TIME", "CPU", "GPU", "MEM", "NET" };
+const char *aida_item_title[] = {"TIME", "CPU", "GPU", "MEM", "NET"};
 
 int checkAidaItemTitle(const char *str)
 {
     const int len = sizeof(aida_item_title) / sizeof(aida_item_title[0]);
     int i = 0;
 
-    for(i = 0; i < len; i++)
+    for (i = 0; i < len; i++)
     {
-        if(strcmp(str, aida_item_title[i]) == 0)
+        if (strcmp(str, aida_item_title[i]) == 0)
         {
             return 0;
         }
@@ -24,12 +25,152 @@ int checkAidaItemTitle(const char *str)
     return -1;
 }
 
-SCREEN_DISPLAY::SCREEN_DISPLAY():u8g2(U8G2_R3, /* cs=*/ CS, /* dc=*/ U8X8_PIN_NONE, /* reset=*/ RST)
+void FifoBuffer::write_impl(const char *str, int len)
+{
+    const char *str_p = str;
+    int tmp_wrt_len = 0;
+    int cover_len = 0;
+    int add_len = 0;
+    int old_insert = 0;
+    int remaining = len;
+
+    if (is_empty()) // buffer is empty
+    {
+        head = 0;
+        tail = 0;
+        insert = 0;
+    }
+
+    while (remaining > 0)
+    {
+        if (insert + remaining > capacity - 1)
+        {
+            /* 写入数据溢出buffer，则写至buffer末尾，insert移动到buffer开头，剩余数据进入下次循环 */
+            tmp_wrt_len = capacity - insert;
+        }
+        else
+        {
+            /* 写入数据未溢出buffer，直接写入 */
+            tmp_wrt_len = remaining;
+        }
+
+        memcpy(data + insert, str_p, tmp_wrt_len);
+
+        old_insert = insert;
+        insert = abs_pos(insert + tmp_wrt_len);
+
+        /* insert位置若在tail之前，则一部分末尾数据被覆盖，计算覆盖数据长度 */
+        cover_len = 0;
+        if (old_insert < tail)
+        {
+            cover_len = std::min(insert, tail) - old_insert;
+        }
+        add_len = tmp_wrt_len - cover_len;
+
+        if (tmp_wrt_len >= rel_pos(old_insert, tail))
+        {
+            /* 写入长度超过old_insert到tail的长度(即写入后insert超过tail)，则同步更新tail */
+            tail = insert;
+        }
+
+        if (is_full())
+        {
+            /* 缓冲区已满，旧数据被覆盖，更新head，由于新数据覆盖旧数据，count不变 */
+            head = abs_pos(tail + 1);
+        }
+        else
+        {
+            count += add_len;
+        }
+
+        str_p += tmp_wrt_len;
+        remaining -= tmp_wrt_len;
+
+        ESP_LOGI(DISPLAY_TAG, "head: %d, tail:%d, insert:%d, count:%d, capacity:%d", head, tail, insert, count, capacity);
+    }
+}
+
+void FifoBuffer::write(const char *str)
+{
+    if (!str)
+        return;
+    write_impl(str, strlen(str));
+}
+
+void FifoBuffer::write(const char chr)
+{
+    write_impl(&chr, 1);
+}
+
+void MultiLineTextBuffer::write(const char *str)
+{
+    const char *c_p = str;
+    bool new_line = false;
+
+    ESP_LOGI(DISPLAY_TAG, "str: %s", str);
+    while (*c_p != '\0')
+    {
+        // ESP_LOGI(DISPLAY_TAG, "*c_p: %c", *c_p);
+        new_line = false;
+
+        if (line_heads.empty())
+        {
+            /* 第一个字符 */
+            line_len = 0;
+            line_heads.push_back(data_buf.tail);
+            // ESP_LOGD(DISPLAY_TAG, "new_line, line_index_list.size() == 0");
+        }
+
+        data_buf.write(*c_p);
+
+        /* 计算行首信息 */
+        if (*c_p == '\b')
+        {
+            if(line_len > 0)
+                line_len--;
+        }
+        else if (*c_p == '\r')
+        {
+            line_len = 0;
+        }
+        else if (*c_p == '\n')
+        {
+            line_len = 0;
+            new_line = true;
+        }
+        else
+        {
+            line_len++;
+            if (line_len > max_col) // line full
+            {
+                // ESP_LOGI(DISPLAY_TAG, "line_len: %d", line_len);
+                line_len = 0;
+                new_line = true;
+            }
+        }
+
+        if (!line_heads.empty() && line_heads[0] == data_buf.tail)
+        {
+            //插入字符覆盖了第一行，删除第一行
+            line_heads.erase(line_heads.begin());
+            // ESP_LOGI(DISPLAY_TAG, "delete line head: %d", data_buf.tail);
+        }
+
+        if (new_line)
+        {
+            line_heads.push_back(data_buf.tail);
+            // ESP_LOGI(DISPLAY_TAG, "new line head: %d", data_buf.tail);
+        }
+
+        /* next char */
+        c_p++;
+    }
+}
+
+SCREEN_DISPLAY::SCREEN_DISPLAY() : u8g2(U8G2_R3, /* cs=*/CS, /* dc=*/U8X8_PIN_NONE, /* reset=*/RST)
 {
     screen_dir = SCREEN_DIR_VERTICAL;
     is_power_save_mode = false;
-    memset(&print_buffer, 0x00, sizeof(print_buffer));
-    memset(&cursor, 0x00, sizeof(cursor));
 }
 
 void SCREEN_DISPLAY::begin(int dir)
@@ -39,17 +180,23 @@ void SCREEN_DISPLAY::begin(int dir)
     u8g2.setFontPosTop();
     u8g2.setContrast(70);
     setScreenDir(dir);
+
+    text_buffer.create(PRINT_BUFFER_LEN_MAX, DISPLAY_HEIGHT / ROW_HEIGHT, DISPLAY_WIDTH / COL_WIDTH);
+    screen_buffer.row = text_buffer.max_row;
+    screen_buffer.col = text_buffer.max_col;
+    screen_buffer.data = (char *)malloc(screen_buffer.row * screen_buffer.col + 1);
+    memset(screen_buffer.data, 0x00, screen_buffer.row * screen_buffer.col + 1);
 }
 
 void SCREEN_DISPLAY::setScreenDir(int dir)
 {
     screen_dir = dir;
 
-    if(screen_dir == SCREEN_DIR_VERTICAL)
+    if (screen_dir == SCREEN_DIR_VERTICAL)
     {
         u8g2.setDisplayRotation(U8G2_R3);
     }
-    else if(screen_dir == SCREEN_DIR_HORIZONTAL)
+    else if (screen_dir == SCREEN_DIR_HORIZONTAL)
     {
         u8g2.setDisplayRotation(U8G2_R2);
     }
@@ -59,13 +206,13 @@ void SCREEN_DISPLAY::displayAida64Data_vertical(std::vector<AIDA64_DATA> &dataLi
 {
     int u8g2_ret = 0;
     int pos_y = 0;
-    char str_buf[64] = { 0 };
+    char str_buf[64] = {0};
 
     u8g2.clearBuffer();
 
-    for(int i = 0; i < dataList.size(); i++)
+    for (int i = 0; i < dataList.size(); i++)
     {
-        if(checkAidaItemTitle(dataList[i].val) == 0) // is title
+        if (checkAidaItemTitle(dataList[i].val) == 0) // is title
         {
             pos_y++;
             sprintf(str_buf, "%s", dataList[i].val);
@@ -79,7 +226,7 @@ void SCREEN_DISPLAY::displayAida64Data_vertical(std::vector<AIDA64_DATA> &dataLi
             pos_y++;
         }
     }
-    
+
     u8g2.sendBuffer();
 }
 
@@ -88,13 +235,13 @@ void SCREEN_DISPLAY::displayAida64Data_horizontal(std::vector<AIDA64_DATA> &data
     int u8g2_ret = 0;
     int pos_x = 0;
     int pos_y = -1;
-    char str_buf[64] = { 0 };
+    char str_buf[64] = {0};
 
     u8g2.clearBuffer();
 
-    for(int i = 0; i < dataList.size(); i++)
+    for (int i = 0; i < dataList.size(); i++)
     {
-        if(checkAidaItemTitle(dataList[i].val) == 0) // is title
+        if (checkAidaItemTitle(dataList[i].val) == 0) // is title
         {
             pos_x = 0;
             pos_y++;
@@ -109,17 +256,17 @@ void SCREEN_DISPLAY::displayAida64Data_horizontal(std::vector<AIDA64_DATA> &data
             pos_x += COL_WIDTH * strlen(str_buf);
         }
     }
-    
+
     u8g2.sendBuffer();
 }
 
 void SCREEN_DISPLAY::displayAida64Data(std::vector<AIDA64_DATA> &dataList)
 {
-    if(screen_dir == SCREEN_DIR_VERTICAL)
+    if (screen_dir == SCREEN_DIR_VERTICAL)
     {
         displayAida64Data_vertical(dataList);
     }
-    else if(screen_dir == SCREEN_DIR_HORIZONTAL)
+    else if (screen_dir == SCREEN_DIR_HORIZONTAL)
     {
         displayAida64Data_horizontal(dataList);
     }
@@ -128,117 +275,67 @@ void SCREEN_DISPLAY::displayAida64Data(std::vector<AIDA64_DATA> &dataList)
 void SCREEN_DISPLAY::clear()
 {
     u8g2.clearBuffer();
-    memset(&print_buffer, 0x00, sizeof(print_buffer));
-    memset(&cursor, 0x00, sizeof(cursor));
+    text_buffer.clear();
+    memset(screen_buffer.data, 0x00, screen_buffer.row * screen_buffer.col);
 }
 
-void SCREEN_DISPLAY::printBufferAdd(const char *str)
+void SCREEN_DISPLAY::refreshScreenBuffer()
 {
-    char *data_p = print_buffer.data;
-    int *head = &print_buffer.head;
-    int *tail = &print_buffer.tail;
-    const char *str_p = str;
-    int next = 0;
-    bool is_empty = 0;
+    int start = 0;
+    position_t cursor = { 0 }; /* cursor.x: ->   cursor.y: ↓ */
 
-    while(*str_p != '\0')
+    if (!screen_buffer.data || text_buffer.line_heads.empty())
+        return;
+
+    memset(screen_buffer.data, ' ', screen_buffer.row * screen_buffer.col);
+
+    start = text_buffer.line_heads[0];
+    if (text_buffer.line_heads.size() > text_buffer.max_row)
     {
-        if(*head == 0 && *tail == 0)  //buffer is empty
-        {
-            next = 0;
-            is_empty = true;
-        }
-        else
-        {
-            next = (*tail + 1) % PRINT_BUFFER_LEN_MAX;
-            is_empty = false;
-        }
-
-        if(next + strlen(str_p) > PRINT_BUFFER_LEN_MAX)
-        {
-            //ESP_LOGD(DISPLAY_TAG, "next(%d) + strlen(str_p)(%d) > PRINT_BUFFER_LEN_MAX(%d)", next, strlen(str_p), PRINT_BUFFER_LEN_MAX);
-            memcpy(data_p + next, str_p, PRINT_BUFFER_LEN_MAX - (*tail + 1));
-            str_p += PRINT_BUFFER_LEN_MAX - next;
-            *tail = PRINT_BUFFER_LEN_MAX - 1;
-            head = 0;
-        }
-        else
-        {
-            //ESP_LOGD(DISPLAY_TAG, "next(%d) + strlen(str_p)(%d) <= PRINT_BUFFER_LEN_MAX(%d)", next, strlen(str_p), PRINT_BUFFER_LEN_MAX);
-            memcpy(data_p + next, str_p, strlen(str_p));
-
-            if(*head == next && !is_empty)
-            {
-                *tail = next - 1 + strlen(str_p);
-                *head = (*tail + 1) % PRINT_BUFFER_LEN_MAX;
-            }
-            else
-            {
-                *tail = next - 1 + strlen(str_p);
-                ESP_LOGD(DISPLAY_TAG, "tail:%d", *tail);
-            }
-
-            str_p += strlen(str_p);
-            break;
-        }
+        /* 记录的行比总行数多，截取后面的行 */
+        start = text_buffer.line_heads[text_buffer.line_heads.size() - text_buffer.max_row];
     }
-}
 
-void SCREEN_DISPLAY::updateBufferLineIndex()
-{
-    char *data_p = print_buffer.data;
-    int head = print_buffer.head;
-    int tail = print_buffer.tail;
-    char *c = data_p + head; // head char
-    int line_len = 0;
-    bool new_line = false;
-
-    line_index_list.clear();
-    while(*c != '\0')
+    int index = start;
+    while(text_buffer.data_buf.data[index] != '\0')
     {
-        new_line = false;
+        //ESP_LOGI(DISPLAY_TAG, "*c_p: %c", *c_p);
+        if (text_buffer.data_buf.data[index] == '\b') //退格
+        {
+            if(cursor.x > 0)
+                cursor.x--;
+        }
+        else if (text_buffer.data_buf.data[index] == '\r') //回车
+        {
+            cursor.x = 0;
+        }
+        else if (text_buffer.data_buf.data[index] == '\n') //换行
+        {
+            cursor.x = 0;
+            cursor.y++;
 
-        if(line_index_list.size() == 0)
-        {
-            line_len = 0;
-            new_line = true;
-            ESP_LOGD(DISPLAY_TAG, "new_line, line_index_list.size() == 0");
-        }
-        else if(*c == '\n') //new line
-        {
-            line_len = 0;
-            new_line = true;
-            ESP_LOGD(DISPLAY_TAG, "new_line, c - data_p:%d, c:\\n", c - data_p);
-        }
-        else if(*c == '\r') //new line head
-        {
-            line_len = 0;
-            ESP_LOGD(DISPLAY_TAG, "c - data_p:%d, c:\\r", c - data_p);
+            // ESP_LOGI(DISPLAY_TAG, "new_line, x:%d, y:%d", cursor.x, cursor.y);
         }
         else
         {
-            line_len++;
-            if(line_len * COL_WIDTH >= DISPLAY_WIDTH) //line full
+            int pos = cursor.x + (cursor.y * screen_buffer.col);
+            if(pos <= screen_buffer.row * screen_buffer.col)
             {
-                line_len = 0;
-                new_line = true;
-                ESP_LOGD(DISPLAY_TAG, "new_line, c - data_p:%d, c:%d", c - data_p, c);
+                screen_buffer.data[cursor.x + (cursor.y * screen_buffer.col)] = text_buffer.data_buf.data[index];
+                cursor.x++;
             }
-        }
 
-        if(new_line)
-        {
-            line_index_list.push_back(c - data_p + 1);
+            if (cursor.x > screen_buffer.col - 1) // line full
+            {
+                cursor.x = 0;
+                cursor.y++;
+            }
         }
 
         /* next char */
-        c++;
-        if(c - data_p + 1 > PRINT_BUFFER_LEN_MAX)
-        {
-            c = data_p;
-        }
+        index = text_buffer.data_buf.abs_pos(index + 1);
 
-        if(c == data_p + (tail + 1) % PRINT_BUFFER_LEN_MAX)
+        if(index == text_buffer.data_buf.tail)
         {
             break;
         }
@@ -247,79 +344,50 @@ void SCREEN_DISPLAY::updateBufferLineIndex()
 
 void SCREEN_DISPLAY::print(const char *str)
 {
-    const int row_max = DISPLAY_HEIGHT / ROW_HEIGHT;
-    char *screen_str = NULL;
-    char c[2] = {0};
+    text_buffer.write(str);
+    ESP_LOGI(DISPLAY_TAG, "text_buffer.line_heads.size(): %d", text_buffer.line_heads.size());
 
-    printBufferAdd(str);
-    updateBufferLineIndex();
-    ESP_LOGD(DISPLAY_TAG, "buffer head:%d, buffer tail:%d", print_buffer.head, print_buffer.tail);
-    ESP_LOGD(DISPLAY_TAG, "buffer:");
-    ESP_LOGD(DISPLAY_TAG, "%s", print_buffer.data);
-    ESP_LOGD(DISPLAY_TAG, "line_index_list:");
-    for(int i = 0; i < line_index_list.size(); i++)
+    refreshScreenBuffer();
+    ESP_LOGI(DISPLAY_TAG, "screen_buffer: %s<<<<<<<<<<<<<<<<<", screen_buffer);
+
+    u8g2.clearBuffer();
+
+    for (int row = 0; row < screen_buffer.row; row++)
     {
-        ESP_LOGD(DISPLAY_TAG, "%d, ", line_index_list[i]);
+        char line_buf[screen_buffer.col + 1];
+        memcpy(line_buf, &screen_buffer.data[row * screen_buffer.col], screen_buffer.col);
+        line_buf[screen_buffer.col] = '\0';
+
+        u8g2.drawStr(0, row * ROW_HEIGHT, line_buf);
     }
 
-    ESP_LOGD(DISPLAY_TAG, "line_index_list.size():%d, row_max:%d, DISPLAY_HEIGHT:%d, ROW_HEIGHT:%f", line_index_list.size(), row_max, DISPLAY_HEIGHT, ROW_HEIGHT);
-    if(line_index_list.size() > row_max)
+    u8g2.sendBuffer();
+}
+
+/* 显示加载状态的字符串，通过step()更新状态 */
+LoadingString::LoadingString(const char *str /*= ""*/)
+{
+    index = 0;
+    memcpy(load_chars, "/-\\|/-\\|", 8);
+    string = String(str);
+}
+
+String LoadingString::step()
+{
+    String ret_str;
+
+    if (index == 0)
     {
-        screen_str = print_buffer.data + line_index_list[line_index_list.size() - row_max];
+        ret_str = string + load_chars[index % 8];
     }
     else
     {
-        screen_str = print_buffer.data;
+        ret_str = String("\b", string.length() + 1) + string + load_chars[index % 8];
     }
 
-    cursor.x = 0;
-    cursor.y = 0;
-    u8g2.clearBuffer();
+    index++;
 
-    do
-    {
-        //超出屏幕宽度换行
-        if((cursor.y + 1) * COL_WIDTH >= DISPLAY_WIDTH && c[0] != '\n')
-        {
-            cursor.y = 0;
-            cursor.x++;
-        }
-
-        c[0] = *screen_str;
-        //ESP_LOGD(DISPLAY_TAG, "c:%s", c);
-        if(c[0] == '\n')//换行
-        {
-            cursor.y = 0;
-            cursor.x++;
-        }
-        else if(c[0] == '\r')//回到行首
-        {
-            cursor.y = 0;
-        }
-        else
-        {
-            u8g2.drawStr(COL_WIDTH * cursor.y, ROW_HEIGHT * cursor.x, c);
-            //ESP_LOGD(DISPLAY_TAG, "u8g2.drawStr(%s), (%d, %d)", c, cursor.x, cursor.y);
-            cursor.y++;
-        }
-
-        /* next char */
-        screen_str++;
-        //ESP_LOGD(DISPLAY_TAG, "screen_str - print_buffer.data + 1:%d", screen_str - print_buffer.data + 1);
-        if(screen_str - print_buffer.data + 1 > PRINT_BUFFER_LEN_MAX)
-        {
-            screen_str = print_buffer.data;
-        }
-        //ESP_LOGD(DISPLAY_TAG, "screen_str - print_buffer.data:%d", screen_str - print_buffer.data);
-        //ESP_LOGD(DISPLAY_TAG, "screen_str:%c", *screen_str);
-        
-        if(screen_str == print_buffer.data + (print_buffer.tail + 1) % PRINT_BUFFER_LEN_MAX)
-        {
-            break;
-        }
-    } while (*screen_str != '\0');
-
-    u8g2.sendBuffer();
+    return ret_str;
 }
 
 SCREEN_DISPLAY display;
